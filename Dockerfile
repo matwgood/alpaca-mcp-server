@@ -42,11 +42,4 @@ COPY --from=tunnel-builder \
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-CMD [
-  "tunnel-client",
-  "run",
-  "--mcp.command",
-  "alpaca-mcp-server",
-  "--health.listen-addr",
-  "127.0.0.1:8080"
-]
+CMD ["tunnel-client", "run", "--mcp.command", "alpaca-mcp-server", "--health.listen-addr", "127.0.0.1:8080"]
