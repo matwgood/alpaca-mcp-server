@@ -1,6 +1,26 @@
+# Build OpenAI Secure MCP Tunnel client
+FROM golang:1.26-alpine AS tunnel-builder
+
+RUN apk add --no-cache git
+
+WORKDIR /src
+
+RUN git clone --depth 1 --branch v0.0.13 \
+    https://github.com/openai/tunnel-client.git .
+
+RUN CGO_ENABLED=0 go build \
+    -o /out/tunnel-client \
+    ./cmd/client
+
+
+# Alpaca MCP runtime
 FROM python:3.11-slim
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -16,7 +36,17 @@ COPY .github/core/ ./.github/core/
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen
 
+COPY --from=tunnel-builder \
+    /out/tunnel-client \
+    /usr/local/bin/tunnel-client
+
 ENV PATH="/app/.venv/bin:$PATH"
 
-# HTTP transport for remote MCP clients (e.g. ChatGPT). Bind all interfaces; use Render's $PORT via cli default.
-CMD ["alpaca-mcp-server", "--transport", "streamable-http", "--host", "0.0.0.0"]
+CMD [
+  "tunnel-client",
+  "run",
+  "--mcp-command",
+  "alpaca-mcp-server",
+  "--health.listen-addr",
+  "127.0.0.1:8080"
+]
