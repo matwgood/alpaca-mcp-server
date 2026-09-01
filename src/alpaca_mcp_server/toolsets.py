@@ -2,11 +2,43 @@
 Toolset definitions for the Alpaca MCP Server.
 
 Each toolset maps to a set of operationIds from the OpenAPI specs. Only endpoints
-listed here are exposed as MCP tools. New endpoints are excluded by default —
+listed here are exposed as MCP tools. New endpoints are excluded by default;
 add their operationId to the appropriate toolset to include them.
 """
 
 TOOLSETS: dict[str, dict] = {
+    # Custom read-only toolsets for our ChatGPT connection.
+    #
+    # These intentionally expose account, activity, order, and position reads
+    # without exposing order placement, cancellation, position closing,
+    # options exercise, or account configuration changes.
+    "account-readonly": {
+        "spec": "trading",
+        "operations": {
+            "getAccount",
+            "getAccountConfig",
+            "getAccountPortfolioHistory",
+            "getAccountActivities",
+            "getAccountActivitiesByActivityType",
+        },
+    },
+
+    "portfolio-readonly": {
+        "spec": "trading",
+        "operations": {
+            "getAllOrders",
+            "getOrderByOrderID",
+            "getOrderByClientOrderId",
+            "getAllOpenPositions",
+            "getOpenPosition",
+        },
+    },
+
+    # Original Alpaca toolsets below.
+    #
+    # We are keeping these definitions intact because the server expects them,
+    # but we will NOT enable the write-capable "account", "trading",
+    # "watchlists", or "locates" toolsets in our Render configuration.
     "account": {
         "spec": "trading",
         "operations": {
@@ -18,6 +50,7 @@ TOOLSETS: dict[str, dict] = {
             "getAccountActivitiesByActivityType",
         },
     },
+
     "trading": {
         "spec": "trading",
         "operations": {
@@ -27,7 +60,7 @@ TOOLSETS: dict[str, dict] = {
             "patchOrderByOrderId",
             "deleteOrderByOrderID",
             "deleteAllOrders",
-            # postOrder is excluded — replaced by overrides
+            # postOrder is excluded; replaced by overrides
             # (place_stock_order, place_crypto_order, place_option_order)
             "getAllOpenPositions",
             "getOpenPosition",
@@ -37,6 +70,7 @@ TOOLSETS: dict[str, dict] = {
             "optionDoNotExercise",
         },
     },
+
     "watchlists": {
         "spec": "trading",
         "operations": {
@@ -49,6 +83,7 @@ TOOLSETS: dict[str, dict] = {
             "removeAssetFromWatchlist",
         },
     },
+
     "assets": {
         "spec": "trading",
         "operations": {
@@ -62,6 +97,7 @@ TOOLSETS: dict[str, dict] = {
             "get-v2-corporate_actions-announcements-id",
         },
     },
+
     "stock-data": {
         "spec": "market-data",
         "operations": {
@@ -76,6 +112,7 @@ TOOLSETS: dict[str, dict] = {
             "Movers",
         },
     },
+
     "crypto-data": {
         "spec": "market-data",
         "operations": {
@@ -89,6 +126,7 @@ TOOLSETS: dict[str, dict] = {
             "CryptoLatestOrderbooks",
         },
     },
+
     "options-data": {
         "spec": "market-data",
         "operations": {
@@ -101,24 +139,28 @@ TOOLSETS: dict[str, dict] = {
             "OptionMetaExchanges",
         },
     },
+
     "corporate-actions": {
         "spec": "market-data",
         "operations": {
             "CorporateActions",
         },
     },
+
     "news": {
         "spec": "market-data",
         "operations": {
             "News",
         },
     },
+
     "fixed-income-data": {
         "spec": "market-data",
         "operations": {
             "FixedIncomeLatestQuotes",
         },
     },
+
     "locates": {
         "spec": "trading",
         "operations": {
@@ -129,6 +171,7 @@ TOOLSETS: dict[str, dict] = {
         },
     },
 }
+
 
 OVERRIDE_OPERATION_IDS = {
     "postOrder",
@@ -141,19 +184,25 @@ OVERRIDE_OPERATION_IDS = {
 }
 
 
-def get_active_operations(active_toolsets: set[str] | None = None) -> dict[str, set[str]]:
+def get_active_operations(
+    active_toolsets: set[str] | None = None,
+) -> dict[str, set[str]]:
     """Return allowed operationIds grouped by spec name.
 
     Args:
         active_toolsets: Set of toolset names to enable. None means all.
 
     Returns:
-        Dict mapping spec name ("trading" / "market-data") to sets of operationIds.
+        Dict mapping spec name ("trading" / "market-data")
+        to sets of operationIds.
     """
     spec_ops: dict[str, set[str]] = {}
+
     for ts_name, ts_config in TOOLSETS.items():
         if active_toolsets is not None and ts_name not in active_toolsets:
             continue
+
         spec = ts_config["spec"]
         spec_ops.setdefault(spec, set()).update(ts_config["operations"])
+
     return spec_ops
