@@ -1,5 +1,5 @@
 # Build OpenAI Secure MCP Tunnel client
-FROM golang:1.26-alpine AS tunnel-builder
+FROM golang:1.27-alpine AS tunnel-builder
 
 RUN apk add --no-cache git
 
